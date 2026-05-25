@@ -1,0 +1,58 @@
+[
+  {
+    "name": "topz.in",
+    "url": "https://topz.in",
+    "description": "Find top-tier websites, tools, resources, and domains curated for developer and tech enthusiasts.",
+    "icon_text": "TZ",
+    "color_hex": "#EC4899"
+  },
+  {
+    "name": "Google",
+    "url": "https://www.google.com",
+    "description": "The world's most popular search engine for discovering any resource or information instantly.",
+    "icon_text": "G",
+    "color_hex": "#3B82F6"
+  },
+  {
+    "name": "Product Hunt",
+    "url": "https://www.producthunt.com",
+    "description": "The absolute place for launching and discovering new tech products daily.",
+    "icon_text": "PH",
+    "color_hex": "#F97316"
+  },
+  {
+    "name": "GitHub",
+    "url": "https://github.com",
+    "description": "The internet hosting service for Git version control and collaborative software projects.",
+    "icon_text": "GH",
+    "color_hex": "#1F2937"
+  },
+  {
+    "name": "Wikipedia",
+    "url": "https://www.wikipedia.org",
+    "description": "The open multilingual encyclopedia written and maintained by a community of volunteers.",
+    "icon_text": "W",
+    "color_hex": "#6B7280"
+  },
+  {
+    "name": "Dev.to",
+    "url": "https://dev.to",
+    "description": "A constructive and inclusive social network for software developers to share knowledge.",
+    "icon_text": "D",
+    "color_hex": "#10B981"
+  },
+  {
+    "name": "Medium",
+    "url": "https://medium.com",
+    "description": "An open platform where readers find dynamic thinking, and where experts share writing.",
+    "icon_text": "M",
+    "color_hex": "#000000"
+  },
+  {
+    "name": "Figma",
+    "url": "https://figma.com",
+    "description": "The leading collaborative web application for modern interface design and prototyping.",
+    "icon_text": "F",
+    "color_hex": "#A78BFA"
+  }
+]

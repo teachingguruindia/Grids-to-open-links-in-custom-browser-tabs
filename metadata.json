@@ -1,0 +1,6 @@
+{
+  "name": "Web Grid",
+  "description": "A stylish, responsive grid of bookmarked sites launching in Chrome Custom Tabs, built from local JSON config.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
