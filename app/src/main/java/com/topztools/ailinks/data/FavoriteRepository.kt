@@ -1,4 +1,4 @@
-package com.example.data
+package com.topztools.ailinks.data
 
 import kotlinx.coroutines.flow.Flow
 

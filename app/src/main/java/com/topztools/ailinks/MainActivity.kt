@@ -1,4 +1,4 @@
-package com.example
+package com.topztools.ailinks
 
 import android.app.Application
 import android.content.Context
@@ -36,8 +36,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -56,11 +59,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.SubcomposeAsyncImage
-import com.example.data.AppDatabase
-import com.example.data.FavoriteRepository
-import com.example.data.FavoriteSite
-import com.example.ui.theme.MyApplicationTheme
+import com.topztools.ailinks.data.AppDatabase
+import com.topztools.ailinks.data.FavoriteRepository
+import com.topztools.ailinks.data.FavoriteSite
+import com.topztools.ailinks.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -151,8 +155,15 @@ class SiteViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun selectSite(site: Site) {
-        _selectedSite.value = site
+    fun selectSite(site: Site?) {
+        if (site == null) {
+            _selectedSite.value = null
+        } else {
+            viewModelScope.launch {
+                delay(120) // Give click gesture animations and touch inputs ample time to settle cleanly across all lists/grids
+                _selectedSite.value = site
+            }
+        }
     }
 
     // Toggle favorite state inside database
@@ -210,9 +221,6 @@ class SiteViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 val list = parseJsonToSites(jsonString)
                 _offlineSites.value = list
-                if (_selectedSite.value == null && list.isNotEmpty()) {
-                    _selectedSite.value = list.first()
-                }
                 _offlineError.value = null
             } catch (e: Exception) {
                 Log.e("SiteViewModel", "Failed to load offline sites", e)
@@ -275,7 +283,7 @@ class SiteViewModel(application: Application) : AndroidViewModel(application) {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun WebGridAppScreen(
     modifier: Modifier = Modifier,
@@ -302,6 +310,28 @@ fun WebGridAppScreen(
         initialPage = 0,
         pageCount = { 3 }
     )
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var isSheetOpen by remember { mutableStateOf(false) }
+    var activeSiteForSheet by remember { mutableStateOf<Site?>(null) }
+
+    LaunchedEffect(selectedSite) {
+        if (selectedSite != null) {
+            activeSiteForSheet = selectedSite
+            isSheetOpen = true
+            try {
+                sheetState.show()
+            } catch (e: Exception) {
+                Log.e("WebGrid", "Failed to show bottom sheet cleanly", e)
+            }
+        } else {
+            try {
+                sheetState.hide()
+            } catch (e: Exception) {
+                // ignore
+            }
+            isSheetOpen = false
+        }
+    }
 
     var showAddDialog by remember { mutableStateOf(false) }
     var showOptionsDialog by remember { mutableStateOf(false) }
@@ -671,200 +701,154 @@ fun WebGridAppScreen(
         }
 
         // Selected Site Summary Card detailed at screen bottom for fast launch actions
-        selectedSite?.let { activeSite ->
-            val activeColor = remember(activeSite.colorHex) {
-                try {
-                    Color(android.graphics.Color.parseColor(activeSite.colorHex))
-                } catch (e: Exception) {
-                    Color(0xFF6750A4)
+        if (isSheetOpen) {
+            activeSiteForSheet?.let { activeSite ->
+                val activeColor = remember(activeSite.colorHex) {
+                    try {
+                        Color(android.graphics.Color.parseColor(activeSite.colorHex))
+                    } catch (e: Exception) {
+                        Color(0xFF6750A4)
+                    }
                 }
-            }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 12.dp)
-                    .background(Color(0xFFF7F2FA), shape = RoundedCornerShape(28.dp))
-                    .border(width = 1.dp, color = Color(0xFFCAC4D0), shape = RoundedCornerShape(28.dp))
-                    .padding(16.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+                ModalBottomSheet(
+                    onDismissRequest = {
+                        coroutineScope.launch {
+                            try {
+                                sheetState.hide()
+                            } catch (e: Exception) {
+                                // ignore
+                            }
+                            delay(150)
+                            viewModel.selectSite(null)
+                            isSheetOpen = false
+                        }
+                    },
+                    sheetState = sheetState,
+                    containerColor = Color(0xFFFDF8F6),
+                    scrimColor = Color.Black.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                    dragHandle = { BottomSheetDefaults.DragHandle(color = Color(0xFFCAC4D0)) }
                 ) {
-                    // Accent Key Vector
-                    Box(
+                    Column(
                         modifier = Modifier
-                            .size(40.dp)
-                            .background(activeColor, shape = RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(start = 24.dp, end = 24.dp, bottom = 36.dp, top = 8.dp)
                     ) {
-                        Text(
-                            text = "🔗",
-                            fontSize = 16.sp,
-                            color = Color.White
-                        )
-                    }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            // Accent Key Vector
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(activeColor, shape = RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "🔗",
+                                    fontSize = 16.sp,
+                                    color = Color.White
+                                )
+                            }
 
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "ACTIVE SELECTION",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = activeColor,
-                            letterSpacing = 1.sp
-                        )
-                        Text(
-                            text = activeSite.name,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF1D1B1E),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "ACTIVE SELECTION",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = activeColor,
+                                    letterSpacing = 1.sp
+                                )
+                                Text(
+                                    text = activeSite.name,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF1D1B1E),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
 
-                    // Easy Toggle favorite right inside selection panel
-                    val selectingIsFav = favoriteUrls.contains(activeSite.url)
-                    IconButton(onClick = { viewModel.toggleFavorite(activeSite) }) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = "Toggle favorite status",
-                            tint = if (selectingIsFav) Color(0xFFFFB300) else Color(0x3F49454F)
-                        )
-                    }
-                }
+                            // Easy Toggle favorite right inside selection panel
+                            val selectingIsFav = favoriteUrls.contains(activeSite.url)
+                            IconButton(onClick = { viewModel.toggleFavorite(activeSite) }) {
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = "Toggle favorite status",
+                                    tint = if (selectingIsFav) Color(0xFFFFB300) else Color(0x3F49454F)
+                                )
+                            }
+                        }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                        if (activeSite.description.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Surface(
+                                color = Color(0xFFF1E6E1).copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = activeSite.description,
+                                    fontSize = 14.sp,
+                                    lineHeight = 20.sp,
+                                    color = Color(0xFF49454F),
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+                        }
 
-                // Custom Google Chrome tab launcher button
-                Button(
-                    onClick = { openSiteInCustomTab(context, activeSite.url) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .testTag("launch_custom_tab_button"),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = activeColor,
-                        contentColor = Color.White
-                    ),
-                    shape = CircleShape,
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = 2.dp,
-                        pressedElevation = 0.dp
-                    )
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "🌐 Open in Custom Browser",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.White
-                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Custom Google Chrome tab launcher button
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    try {
+                                        sheetState.hide()
+                                    } catch (e: Exception) {
+                                        // ignore
+                                    }
+                                    delay(150)
+                                    viewModel.selectSite(null)
+                                    isSheetOpen = false
+                                    openSiteInCustomTab(context, activeSite.url)
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                                .testTag("launch_custom_tab_button"),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = activeColor,
+                                contentColor = Color.White
+                            ),
+                            shape = CircleShape,
+                            elevation = ButtonDefaults.buttonElevation(
+                                defaultElevation = 2.dp,
+                                pressedElevation = 0.dp
+                            )
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = "🌐 Open in Custom Browser",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color.White
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Custom Navigation Bar simulation keeping things gorgeous
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(72.dp)
-                .background(Color(0xFFF3EDF7))
-                .border(width = 1.dp, color = Color(0xFFE7E0EC))
-                .navigationBarsPadding(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceAround
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .clickable {
-                        coroutineScope.launch { pagerState.animateScrollToPage(0) }
-                    }
-                    .padding(8.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(64.dp)
-                        .height(32.dp)
-                        .background(
-                            if (pagerState.currentPage == 0) Color(0xFFEADDFF) else Color.Transparent,
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Home,
-                        contentDescription = "Offline Library",
-                        tint = if (pagerState.currentPage == 0) Color(0xFF21005D) else Color(0xFF49454F)
-                    )
-                }
-                Text(text = "Offline", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D1B1E))
-            }
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .clickable {
-                        coroutineScope.launch { pagerState.animateScrollToPage(1) }
-                    }
-                    .padding(8.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(64.dp)
-                        .height(32.dp)
-                        .background(
-                            if (pagerState.currentPage == 1) Color(0xFFEADDFF) else Color.Transparent,
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = "Online Directory",
-                        tint = if (pagerState.currentPage == 1) Color(0xFF21005D) else Color(0xFF49454F)
-                    )
-                }
-                Text(text = "Online", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF49454F))
-            }
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .clickable {
-                        coroutineScope.launch { pagerState.animateScrollToPage(2) }
-                    }
-                    .padding(8.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(64.dp)
-                        .height(32.dp)
-                        .background(
-                            if (pagerState.currentPage == 2) Color(0xFFEADDFF) else Color.Transparent,
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = "Favorites",
-                        tint = if (pagerState.currentPage == 2) Color(0xFF21005D) else Color(0xFF49454F)
-                    )
-                }
-                Text(text = "Favorites", fontSize = 11.sp, fontStyle = null, fontWeight = FontWeight.Medium, color = Color(0xFF49454F))
-            }
-        }
 
         // --- DIALOGS HANDLING ---
         if (showAddDialog) {
@@ -946,7 +930,19 @@ fun OfflineTabContent(
     onToggleFav: (Site) -> Unit,
     onOpenDirectly: (Site) -> Unit
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
+    val bgHex = androidx.compose.ui.res.stringResource(id = R.string.offline_bg_color)
+    val bgColor = remember(bgHex) {
+        try {
+            Color(android.graphics.Color.parseColor(bgHex))
+        } catch (e: Exception) {
+            Color(0xFFF7E6F2)
+        }
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bgColor)
+    ) {
         when {
             isLoading -> {
                 CircularProgressIndicator(
@@ -974,7 +970,7 @@ fun OfflineTabContent(
             }
             else -> {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 150.dp),
+                    columns = GridCells.Adaptive(minSize = 140.dp),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 12.dp, top = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -990,8 +986,7 @@ fun OfflineTabContent(
                             isSelected = isSelected,
                             isFavorite = isFavorite,
                             onSelect = { onSelectSite(site) },
-                            onToggleFavorite = { onToggleFav(site) },
-                            onOpenDirectly = { onOpenDirectly(site) }
+                            onToggleFavorite = { onToggleFav(site) }
                         )
                     }
                 }
@@ -1012,7 +1007,19 @@ fun OnlineTabContent(
     onOpenDirectly: (Site) -> Unit,
     onRetry: () -> Unit
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
+    val bgHex = androidx.compose.ui.res.stringResource(id = R.string.online_bg_color)
+    val bgColor = remember(bgHex) {
+        try {
+            Color(android.graphics.Color.parseColor(bgHex))
+        } catch (e: Exception) {
+            Color(0xFFC4DBFF)
+        }
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bgColor)
+    ) {
         when {
             isLoading -> {
                 CircularProgressIndicator(
@@ -1051,7 +1058,7 @@ fun OnlineTabContent(
             }
             else -> {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 150.dp),
+                    columns = GridCells.Adaptive(minSize = 140.dp),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 12.dp, top = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -1065,8 +1072,7 @@ fun OnlineTabContent(
                             isSelected = isSelected,
                             isFavorite = isFavorite,
                             onSelect = { onSelectSite(site) },
-                            onToggleFavorite = { onToggleFav(site) },
-                            onOpenDirectly = { onOpenDirectly(site) }
+                            onToggleFavorite = { onToggleFav(site) }
                         )
                     }
                 }
@@ -1282,8 +1288,8 @@ fun FavoriteItemRow(
 }
 
 // Grid Card representation for Offline and Online tabs preserving:
-// - "top circular icon below name, and on button click let open url in google Custom browser"
-// - "add to favorite icon on each data online or offline"
+// - Circular design with dashed circular outer border as shown in attached design image
+// - Remove description from grid card, make it highly compact and visually matching
 @Composable
 fun SiteCard(
     site: Site,
@@ -1291,7 +1297,6 @@ fun SiteCard(
     isFavorite: Boolean,
     onSelect: () -> Unit,
     onToggleFavorite: () -> Unit,
-    onOpenDirectly: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val siteColor = remember(site.colorHex) {
@@ -1303,143 +1308,136 @@ fun SiteCard(
     }
 
     Card(
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) Color(0xFFF7F2FA) else Color.White
         ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 8.dp,
+            pressedElevation = 2.dp,
+            hoveredElevation = 10.dp
+        ),
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 216.dp)
             .clickable { onSelect() }
             .border(
                 width = if (isSelected) 2.dp else 1.dp,
-                color = if (isSelected) siteColor else Color(0xFFCAC4D0).copy(alpha = 0.5f),
-                shape = RoundedCornerShape(24.dp)
+                color = if (isSelected) siteColor else Color(0xFFCAC4D0).copy(alpha = 0.4f),
+                shape = RoundedCornerShape(16.dp)
             )
             .testTag("site_card_${site.name.lowercase().replace(" ", "_")}")
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp),
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.Center
         ) {
-            // First display: Name at the top and Star toggle overlay
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = site.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.2.sp,
-                    color = Color(0xFF1D1B1E),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-
-                IconButton(
-                    onClick = { onToggleFavorite() },
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = "Favorite link toggle",
-                        tint = if (isFavorite) Color(0xFFFFB300) else Color(0x3FCAC4D0),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-
-            // Second display: Circular Icon directly BELOW the Name (as requested)
+            // Circular icon enclosed in a dashed circle
             Box(
                 modifier = Modifier
-                    .size(54.dp)
-                    .clip(CircleShape)
-                    .background(siteColor.copy(alpha = 0.15f), shape = CircleShape)
-                    .border(width = 2.dp, color = siteColor, shape = CircleShape)
-                    .shadow(elevation = 2.dp, shape = CircleShape),
+                    .size(80.dp),
                 contentAlignment = Alignment.Center
             ) {
-                if (site.iconUrl.isNotEmpty()) {
-                    SubcomposeAsyncImage(
-                        model = site.iconUrl,
-                        contentDescription = site.name + " avatar icon",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(6.dp)
-                            .clip(CircleShape),
-                        loading = {
-                            CircularProgressIndicator(
-                                color = siteColor,
-                                strokeWidth = 1.5.dp,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        },
-                        error = {
-                            Text(
-                                text = site.name.firstOrNull()?.toString()?.uppercase() ?: "S",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                color = siteColor
+                // Dashed border circle
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .drawBehind {
+                            val dashWidth = 3.dp.toPx()
+                            val gapWidth = 3.dp.toPx()
+                            val strokeWidth = 1.5.dp.toPx()
+                            drawCircle(
+                                color = Color(0xFF79747E).copy(alpha = 0.7f),
+                                radius = size.minDimension / 2,
+                                style = Stroke(
+                                    width = strokeWidth,
+                                    pathEffect = PathEffect.dashPathEffect(
+                                        floatArrayOf(dashWidth, gapWidth),
+                                        0f
+                                    )
+                                )
                             )
                         }
-                    )
-                } else {
-                    Text(
-                        text = site.name.firstOrNull()?.toString()?.uppercase() ?: "S",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = siteColor
-                    )
+                )
+
+                // The solid colored background circle with white text/icon (as ZIP converter image style)
+                Box(
+                    modifier = Modifier
+                        .size(58.dp)
+                        .clip(CircleShape)
+                        .background(siteColor)
+                        .padding(10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (site.iconUrl.isNotEmpty()) {
+                        SubcomposeAsyncImage(
+                            model = site.iconUrl,
+                            contentDescription = site.name + " icon",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            loading = {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    strokeWidth = 1.5.dp,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            },
+                            error = {
+                                Text(
+                                    text = site.name.firstOrNull()?.toString()?.uppercase() ?: "S",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 20.sp,
+                                    color = Color.White
+                                )
+                            }
+                        )
+                    } else {
+                        Text(
+                            text = site.name.firstOrNull()?.toString()?.uppercase() ?: "S",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            color = Color.White
+                        )
+                    }
+                }
+
+                // Small Favorite Star badge overlay
+                if (isFavorite) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .background(Color(0xFFFFB300), shape = CircleShape)
+                            .align(Alignment.TopEnd)
+                            .border(width = 1.5.dp, color = Color.White, shape = CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "Starred shortcut",
+                            tint = Color.White,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Third display: Description supporting text
+            // Name of the site below the icon styled beautiful cyan-blue like the design image
             Text(
-                text = site.description,
-                fontSize = 11.sp,
-                lineHeight = 14.sp,
-                color = Color(0xFF49454F),
+                text = site.name,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                color = Color(0xFF0288D1),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 2.dp)
+                modifier = Modifier.fillMaxWidth()
             )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Fourth display: "Visit" Button executing Custom Tabs
-            Button(
-                onClick = onOpenDirectly,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(34.dp)
-                    .testTag("visit_button_${site.name.lowercase().replace(" ", "_")}"),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = siteColor,
-                    contentColor = Color.White
-                ),
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
-            ) {
-                Text(
-                    text = "Visit Site",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp,
-                    color = Color.White
-                )
-            }
         }
     }
 }
