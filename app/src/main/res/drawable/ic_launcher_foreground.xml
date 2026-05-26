@@ -1,30 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
+
+    <!-- 1. Neural Circuit AI Icon at Top Center -->
+    <!-- Head outline / Neural network loop -->
+    <path
+        android:pathData="M38,36 C34,36 31,33 31,29 C31,23 41,20 54,20 C67,20 77,23 77,29 C77,33 74,36 70,36"
+        android:strokeWidth="2.0"
+        android:strokeLineCap="round"
+        android:strokeColor="#FF00F0FF"
+        android:fillColor="#00000000" />
+
+    <!-- Connecting vertical neural branch -->
+    <path
+        android:pathData="M54,20 V30"
+        android:strokeWidth="1.5"
+        android:strokeColor="#FF00F0FF"
+        android:fillColor="#00000000" />
+
+    <!-- Center AI Node -->
+    <path
+        android:pathData="M54,34 m-4,0a4,4 0 1,1 8,0a4,4 0 1,1 -8,0">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:endX="85.84757"
-                android:endY="92.4963"
-                android:startX="42.9492"
-                android:startY="49.59793"
+                android:startX="50"
+                android:startY="30"
+                android:endX="58"
+                android:endY="38"
                 android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
+                <item android:color="#FF00F0FF" android:offset="0.0"/>
+                <item android:color="#FF0072FF" android:offset="1.0"/>
             </gradient>
         </aapt:attr>
     </path>
+
+    <!-- Side Circuit Terminals -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+        android:pathData="M38,36 m-2,0a2,2 0 1,1 4,0a2,2 0 1,1 -4,0"
+        android:fillColor="#FF00F0FF" />
+    <path
+        android:pathData="M70,36 m-2,0a2,2 0 1,1 4,0a2,2 0 1,1 -4,0"
+        android:fillColor="#FF00F0FF" />
+
+    <!-- 2. Radiant Tech Sparkles on Upper Right -->
+    <path
+        android:pathData="M80,18 L82,23 L87,25 L82,27 L80,32 L78,27 L73,25 L78,23 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="73"
+                android:startY="18"
+                android:endX="87"
+                android:endY="32"
+                android:type="linear">
+                <item android:color="#FFFFFFFF" android:offset="0.0"/>
+                <item android:color="#FF3DFDFF" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <path
+        android:pathData="M88,28 L89,31 L92,32 L89,33 L88,36 L87,33 L84,32 L87,31 Z"
+        android:fillColor="#FF7DFFFF" />
+
+    <!-- 3. BRAND IDENTITY TYPOGRAPHY - "TopZ" -->
+    <!-- 'T' - Bold, Solid Pure White -->
+    <path
+        android:pathData="M22,48 H36 V52.5 H31.5 V68 H26.5 V52.5 H22 Z"
+        android:fillColor="#FFFFFFFF" />
+
+    <!-- 'o' - Tech Ring Design, Solid Pure White -->
+    <path
+        android:pathData="M43.5,51 C48,51 51,54.5 51,58.5 C51,62.5 48,66 43.5,66 C39,66 36,62.5 36,58.5 C36,54.5 39,51 43.5,51 Z M43.5,54.5 C41.5,54.5 40.5,56 40.5,58.5 C40.5,61 41.5,62.5 43.5,62.5 C45.5,62.5 46.5,61 46.5,58.5 C46.5,56 45.5,54.5 43.5,54.5 Z"
+        android:fillColor="#FFFFFFFF" />
+
+    <!-- 'p' - Precise Bold Geometry, Solid Pure White -->
+    <path
+        android:pathData="M54,51 H62.5 C66,51 67.5,53.5 67.5,56.5 C67.5,59.5 66,61.5 62.5,61.5 H58.5 V68 H54 Z M58.5,54.5 V58 H62 C63,58 63.5,57.5 63.5,56.5 C63.5,55.5 63,54.5 62,54.5 Z"
+        android:fillColor="#FFFFFFFF" />
+
+    <!-- 'Z' - Vibrant Gradient Electric Blue (Main Focal Element) -->
+    <path
+        android:pathData="M70,48 H86 V53.5 L75.5,62.5 H86 V68 H70 V62.5 L80.5,53.5 H70 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="70"
+                android:startY="48"
+                android:endX="86"
+                android:endY="68"
+                android:type="linear">
+                <item android:color="#FF00F2FE" android:offset="0.0"/>
+                <item android:color="#FF4FACFE" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 4. Subtitle - "AI TOOLS" - Sleek Tech Line & Capital Lettering -->
+    <!-- Horizontal Left accent bar -->
+    <path
+        android:pathData="M22,76 H36"
+        android:strokeWidth="1.5"
+        android:strokeColor="#FF00F0FF" />
+
+    <!-- Horizontal Right accent bar -->
+    <path
+        android:pathData="M72,76 H86"
+        android:strokeWidth="1.5"
+        android:strokeColor="#FF00F0FF" />
+
+    <!-- Subtitle Text "AI" in small styled glyphs -->
+    <path
+        android:pathData="M44,72 H49 L51,78 H49.5 L48.5,75 H44.5 L43.5,78 H42 Z M45,73 L48,73 L47,71 Z"
+        android:fillColor="#FFFFFFFF" />
+    <path
+        android:pathData="M54,72 H58 V73.5 H56.5 V78 H55.5 V73.5 H54 Z"
+        android:fillColor="#FFFFFFFF" />
 </vector>
