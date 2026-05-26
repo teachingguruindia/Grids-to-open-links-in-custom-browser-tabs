@@ -1459,6 +1459,33 @@ fun recuerdedFilteredList(sitesList: List<Site>, query: String): List<Site> {
 }
 
 // Safe method opening URLs utilizing CustomTabs, with a clean FLAG_ACTIVITY_NEW_TASK context fallback
+fun isNetworkAvailable(context: Context): Boolean {
+    return try {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+        if (connectivityManager != null) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                val activeNetwork = connectivityManager.activeNetwork ?: return false
+                val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
+                capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
+                        capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                        capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) ||
+                        capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) ||
+                        capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_BLUETOOTH)
+            } else {
+                @Suppress("DEPRECATION")
+                val activeNetworkInfo = connectivityManager.activeNetworkInfo
+                activeNetworkInfo != null && activeNetworkInfo.isConnected
+            }
+        } else {
+            true
+        }
+    } catch (e: Throwable) {
+        Log.e("NetworkCheck", "Failed to check network capabilities, falling back to true", e)
+        true
+    }
+}
+
+// Safe method opening URLs utilizing CustomTabs, with a clean FLAG_ACTIVITY_NEW_TASK context fallback
 fun openSiteInCustomTab(context: Context, url: String) {
     try {
         if (url.startsWith("mailto:", ignoreCase = true)) {
@@ -1467,32 +1494,68 @@ fun openSiteInCustomTab(context: Context, url: String) {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 context.startActivity(intent)
-            } catch (ex: Exception) {
-                // Securely copy email to clipboard if no mail app exists on emulator
-                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                val clip = android.content.ClipData.newPlainText("email", url.substringAfter("mailto:"))
-                clipboard.setPrimaryClip(clip)
-                android.widget.Toast.makeText(context, "Support email copied to clipboard!", android.widget.Toast.LENGTH_LONG).show()
+            } catch (ex: Throwable) {
+                try {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    val clip = android.content.ClipData.newPlainText("email", url.substringAfter("mailto:"))
+                    clipboard.setPrimaryClip(clip)
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        try {
+                            android.widget.Toast.makeText(context, "Support email copied to clipboard!", android.widget.Toast.LENGTH_LONG).show()
+                        } catch (t: Throwable) {
+                            Log.e("CustomTab", "Failed to show support copy toast", t)
+                        }
+                    }
+                } catch (clipEx: Throwable) {
+                    Log.e("CustomTab", "Failed to write support email to clipboard", clipEx)
+                }
                 Log.e("CustomTab", "Failed to launch mail app directly, copied to clipboard instead", ex)
             }
             return
         }
-        val parsedUri = Uri.parse(url)
-        val customTabsIntent = CustomTabsIntent.Builder()
-            .setShareState(CustomTabsIntent.SHARE_STATE_ON)
-            .setShowTitle(true)
-            .build()
-        customTabsIntent.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        customTabsIntent.launchUrl(context, parsedUri)
-    } catch (e: Exception) {
-        try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
-        } catch (ex: Exception) {
-            Log.e("CustomTab", "Failed to launch webpage fallback browser", ex)
+
+        val online = try {
+            isNetworkAvailable(context)
+        } catch (t: Throwable) {
+            true
         }
+
+        if (!online) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                try {
+                    android.widget.Toast.makeText(
+                        context,
+                        "No Internet Connection. Please check your internet connection.",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                } catch (t: Throwable) {
+                    Log.e("CustomTab", "Failed to show network toast", t)
+                }
+            }
+            return
+        }
+
+        val parsedUri = Uri.parse(url)
+        try {
+            val customTabsIntent = CustomTabsIntent.Builder()
+                .setShareState(CustomTabsIntent.SHARE_STATE_ON)
+                .setShowTitle(true)
+                .build()
+            customTabsIntent.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            customTabsIntent.launchUrl(context, parsedUri)
+        } catch (e: Throwable) {
+            Log.e("CustomTab", "Failed to launch custom tab, trying fallback browser", e)
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, parsedUri).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            } catch (fallbackEx: Throwable) {
+                Log.e("CustomTab", "Failed to launch fallback browser", fallbackEx)
+            }
+        }
+    } catch (e: Throwable) {
+        Log.e("CustomTab", "Ultimate fallback: failed to open site: $url", e)
     }
 }
 
